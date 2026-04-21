@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Humanize — AI Text Transformer</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      min-height: 100vh;
+      background: #0e0e14;
+      font-family: 'Georgia', 'Times New Roman', serif;
+      color: #e8e6f0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    header {
+      width: 100%;
+      padding: 2rem 2rem 1.2rem;
+      text-align: center;
+      border-bottom: 1px solid #1e1e2e;
+      background: linear-gradient(180deg,#12121a 0%,#0e0e14 100%);
+    }
+    .header-label {
+      font-size: 0.72rem;
+      letter-spacing: 0.25em;
+      color: #555;
+      text-transform: uppercase;
+      margin-bottom: 0.4rem;
+    }
+    .header-title {
+      font-size: clamp(1.8rem, 4vw, 2.8rem);
+      font-weight: 400;
+      font-style: italic;
+      background: linear-gradient(135deg, #e8e6f0 30%, #9f9bbf);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      letter-spacing: -0.02em;
+    }
+    .header-sub {
+      margin-top: 0.4rem;
+      color: #555;
+      font-size: 0.88rem;
+      font-style: italic;
+    }
+
+    main {
+      width: 100%;
+      max-width: 980px;
+      padding: 2rem 1.5rem;
+      flex: 1;
+    }
+
+    .mode-selector {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1.4rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .mode-btn {
+      padding: 0.85rem 1.8rem;
+      border-radius: 12px;
+      border: 2px solid #2a2a3a;
+      background: #141420;
+      color: #666;
+      cursor: pointer;
+      font-family: Georgia, serif;
+      font-size: 0.95rem;
+      transition: all 0.25s;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .mode-desc {
+      text-align: center;
+      color: #666;
+      font-size: 0.83rem;
+      margin-bottom: 1.8rem;
+      font-style: italic;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    @media (max-width: 660px) { .grid { grid-template-columns: 1fr; } }
+
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.7rem 0 0.45rem;
+    }
+    .panel-label {
+      font-size: 0.7rem;
+      letter-spacing: 0.1em;
+      color: #777;
+      text-transform: uppercase;
+    }
+    .word-count { font-size: 0.68rem; color: #555; }
+
+    textarea {
+      width: 100%;
+      height: 330px;
+      background: #141420;
+      border: 1px solid #2a2a3a;
+      border-radius: 0 12px 12px 12px;
+      padding: 1.2rem;
+      color: #ccc;
+      font-size: 0.88rem;
+      line-height: 1.75;
+      font-family: Georgia, serif;
+      resize: vertical;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    textarea::placeholder { color: #444; font-style: italic; }
+
+    .output-box {
+      width: 100%;
+      height: 330px;
+      background: #0f0f1a;
+      border: 1px solid #2a2a3a;
+      border-radius: 12px;
+      padding: 1.2rem;
+      color: #444;
+      font-size: 0.88rem;
+      line-height: 1.75;
+      font-family: Georgia, serif;
+      overflow-y: auto;
+      white-space: pre-wrap;
+    }
+    .output-box.has-output { background: #141420; color: #e0ddf0; }
+
+    .actions { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; margin-top: 0.5rem; }
+
+    .btn-humanize {
+      padding: 0.9rem 2.5rem;
+      border-radius: 10px;
+      border: none;
+      color: #fff;
+      font-size: 1rem;
+      cursor: pointer;
+      font-family: Georgia, serif;
+      letter-spacing: 0.03em;
+      transition: all 0.2s;
+    }
+    .btn-humanize:disabled { background: #2a2a3a !important; color: #555 !important; cursor: not-allowed; box-shadow: none !important; }
+    .btn-copy {
+      padding: 0.9rem 2rem;
+      border-radius: 10px;
+      background: transparent;
+      font-size: 0.95rem;
+      cursor: pointer;
+      font-family: Georgia, serif;
+      transition: all 0.2s;
+    }
+    .btn-clear {
+      padding: 0.9rem 1.5rem;
+      border-radius: 10px;
+      border: 1px solid #2a2a3a;
+      background: transparent;
+      color: #666;
+      font-size: 0.95rem;
+      cursor: pointer;
+      font-family: Georgia, serif;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-label">AI Text Transformer</div>
+  <h1 class="header-title">Humanize</h1>
+  <p class="header-sub">Make AI text sound like a real person wrote it</p>
+</header>
+
+<main>
+  <div class="mode-selector" id="modeSelector"></div>
+  <p class="mode-desc" id="modeDesc"></p>
+
+  <div class="grid">
+    <div>
+      <div class="panel-header" id="inputHeader">
+        <span class="panel-label">AI-Generated Text</span>
+        <span class="word-count" id="inputWordCount">0 words</span>
+      </div>
+      <textarea id="textInput" placeholder="Paste your AI-generated text here..."
+        oninput="onInput(this.value)"></textarea>
+    </div>
+
+    <div>
+      <div class="panel-header" id="outputHeader">
+        <span class="panel-label" id="outputLabel">Humanized Result</span>
+        <span class="word-count" id="outputWordCount"></span>
+      </div>
+      <div class="output-box" id="outputBox">
+        <span style="font-style:italic">Your humanized text will appear here…</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="actions" id="actions"></div>
+</main>
+
+<script>
+const MODES = {
+  doctor: {
+    label: "Doctor / Physician", icon: "🩺",
+    color: "#1a6b5a", accent: "#2eb89a",
+    desc: "Clinical, professional, precise — like a senior physician writing patient notes.",
+    starters: ["In my experience,","Clinically speaking,","That said,","Now,","From what I've seen,","In most cases,","Worth noting —"],
+    hedges: ["typically","in most cases","generally","often","usually","as a rule"],
+    connectors: ["That said,","Now,","Worth noting,","In practice,","As I've seen,","Here's the thing —"]
+  },
+  student: {
+    label: "College Student", icon: "🎓",
+    color: "#4a3fa0", accent: "#7c6ff7",
+    desc: "Casual, slightly informal, authentic — like a smart undergrad writing an essay.",
+    starters: ["Basically,","So,","Honestly,","To be fair,","The thing is,","I mean,","Look,"],
+    hedges: ["I think","it seems like","probably","kind of","sort of","arguably"],
+    connectors: ["Basically,","So,","Honestly,","The thing is,","Also,","And honestly,"]
+  }
+};
+
+const REPLACEMENTS = [
+  [/\bdelve[sd]?\b/gi, w => w.endsWith("s") ? "explores" : w.endsWith("d") ? "explored" : "explore"],
+  [/\bcrucial\b/gi, "important"],
+  [/\bfurthermore\b/gi, "also"],
+  [/\bmoreover\b/gi, "on top of that"],
+  [/\butilize[sd]?\b/gi, w => w.endsWith("s") ? "uses" : w.endsWith("d") ? "used" : "use"],
+  [/\butilization\b/gi, "use"],
+  [/\bfacilitate[sd]?\b/gi, w => w.endsWith("s") ? "helps" : w.endsWith("d") ? "helped" : "help"],
+  [/\bleverage[sd]?\b/gi, w => w.endsWith("s") ? "uses" : w.endsWith("d") ? "used" : "use"],
+  [/\bnevertheless\b/gi, "still"],
+  [/\bnotwithstanding\b/gi, "despite that"],
+  [/\bsubsequently\b/gi, "after that"],
+  [/\bconsequently\b/gi, "so"],
+  [/\badditionally\b/gi, "also"],
+  [/\bin conclusion\b/gi, "to wrap up"],
+  [/\bin summary\b/gi, "in short"],
+  [/\bto summarize\b/gi, "in short"],
+  [/\bit is worth noting\b/gi, "worth noting"],
+  [/\bit is important to note\b/gi, "importantly"],
+  [/\bit should be noted\b/gi, "notably"],
+  [/\bone must\b/gi, "you need to"],
+  [/\bone should\b/gi, "you should"],
+  [/\bindividuals\b/gi, "people"],
+  [/\bprovide[sd]?\b/gi, w => w.endsWith("s") ? "gives" : w.endsWith("d") ? "gave" : "give"],
+  [/\bobtain[sd]?\b/gi, w => w.endsWith("s") ? "gets" : w.endsWith("d") ? "got" : "get"],
+  [/\bdemonstrate[sd]?\b/gi, w => w.endsWith("s") ? "shows" : w.endsWith("d") ? "showed" : "show"],
+  [/\bpossess(?:es)?\b/gi, w => w.endsWith("es") ? "has" : "have"],
+  [/\bcommence[sd]?\b/gi, w => w.endsWith("s") ? "starts" : w.endsWith("d") ? "started" : "start"],
+  [/\bterminate[sd]?\b/gi, w => w.endsWith("s") ? "ends" : w.endsWith("d") ? "ended" : "end"],
+  [/\bin order to\b/gi, "to"],
+  [/\bdue to the fact that\b/gi, "because"],
+  [/\bat this point in time\b/gi, "now"],
+  [/\bprior to\b/gi, "before"],
+  [/\bsubsequent to\b/gi, "after"],
+  [/\bin the event that\b/gi, "if"],
+  [/\bwith regard to\b/gi, "about"],
+  [/\bwith respect to\b/gi, "about"],
+  [/\bencompass(?:es)?\b/gi, w => w.endsWith("es") ? "includes" : "include"],
+  [/\bascertain\b/gi, "find out"],
+];
+
+function humanizeText(text, mode) {
+  const m = MODES[mode];
+  let result = text;
+
+  for (const [pattern, replacement] of REPLACEMENTS) {
+    result = result.replace(pattern, replacement);
+  }
+
+  let sentences = result
+    .replace(/([.!?])\s+/g, "$1|||")
+    .split("|||")
+    .map(s => s.trim())
+    .filter(Boolean);
+
+  sentences = sentences.map((sentence, i) => {
+    const words = sentence.split(" ");
+
+    // Add hedge every ~4 sentences
+    if (i % 4 === 2 && m.hedges.length && words.length > 6) {
+      const hedge = m.hedges[i % m.hedges.length];
+      words.splice(2, 0, hedge);
+      sentence = words.join(" ");
+    }
+
+    // Add connector every ~5 sentences (not first)
+    if (i > 0 && i % 5 === 0 && m.connectors.length) {
+      const connector = m.connectors[i % m.connectors.length];
+      if (!/^(so|now|but|and|also|that|here|look|basically|honestly)/i.test(sentence)) {
+        sentence = connector + " " + sentence.charAt(0).toLowerCase() + sentence.slice(1);
+      }
+    }
+
+    return sentence;
+  });
+
+  // Break very long sentences
+  const processed = [];
+  for (const s of sentences) {
+    const words = s.split(" ");
+    if (words.length > 30) {
+      const mid = Math.floor(words.length / 2);
+      let splitAt = mid;
+      for (let j = mid - 3; j <= mid + 3; j++) {
+        if (words[j] && (words[j].endsWith(",") || /^(and|but|so|which|that|because|although|while|when)$/i.test(words[j]))) {
+          splitAt = j + 1; break;
+        }
+      }
+      const first = words.slice(0, splitAt).join(" ").replace(/,$/, "") + ".";
+      const second = words.slice(splitAt).join(" ");
+      processed.push(first, second.charAt(0).toUpperCase() + second.slice(1));
+    } else {
+      processed.push(s);
+    }
+  }
+
+  // Add starter to first sentence
+  if (processed.length > 0 && m.starters.length) {
+    const first = processed[0];
+    if (!/^(in my|clinically|basically|so,|honestly|look,|now,|that said)/i.test(first)) {
+      processed[0] = m.starters[0] + " " + first.charAt(0).toLowerCase() + first.slice(1);
+    }
+  }
+
+  return processed.join(" ");
+}
+
+// ── State & UI ─────────────────────────────────────────────────
+let currentMode = "doctor";
+let inputText = "";
+let outputText = "";
+let copied = false;
+
+const wordCount = t => t.trim() ? t.trim().split(/\s+/).length : 0;
+
+function render() {
+  const m = MODES[currentMode];
+
+  // Mode buttons
+  const sel = document.getElementById("modeSelector");
+  sel.innerHTML = "";
+  for (const [key, ms] of Object.entries(MODES)) {
+    const active = currentMode === key;
+    const btn = document.createElement("button");
+    btn.className = "mode-btn";
+    btn.style.cssText = `
+      border: 2px solid ${active ? ms.accent : "#2a2a3a"};
+      background: ${active ? `linear-gradient(135deg,${ms.color}22,${ms.accent}15)` : "#141420"};
+      color: ${active ? ms.accent : "#666"};
+      box-shadow: ${active ? `0 0 20px ${ms.accent}22` : "none"};
+    `;
+    btn.innerHTML = `<span style="font-size:1.1rem">${ms.icon}</span><span>${ms.label}</span>`;
+    btn.onclick = () => { currentMode = key; outputText = ""; render(); };
+    sel.appendChild(btn);
+  }
+
+  document.getElementById("modeDesc").textContent = m.desc;
+  document.getElementById("inputHeader").style.borderTop = `2px solid ${m.accent}`;
+  document.getElementById("outputHeader").style.borderTop = `2px solid ${m.accent}44`;
+  document.getElementById("outputLabel").style.color = m.accent;
+  document.getElementById("inputWordCount").textContent = wordCount(inputText) + " words";
+  document.getElementById("outputWordCount").textContent = outputText ? wordCount(outputText) + " words" : "";
+
+  const ta = document.getElementById("textInput");
+  ta.onfocus = () => ta.style.borderColor = m.accent;
+  ta.onblur  = () => ta.style.borderColor = "#2a2a3a";
+
+  const box = document.getElementById("outputBox");
+  if (outputText) {
+    box.className = "output-box has-output";
+    box.style.borderColor = m.accent + "55";
+    box.textContent = outputText;
+  } else {
+    box.className = "output-box";
+    box.style.borderColor = "#2a2a3a";
+    box.innerHTML = `<span style="font-style:italic">Your humanized text will appear here…</span>`;
+  }
+
+  const able = inputText.trim().length > 0;
+  document.getElementById("actions").innerHTML = `
+    <button class="btn-humanize" ${able ? "" : "disabled"}
+      style="background:${able ? `linear-gradient(135deg,${m.color},${m.accent})` : "#2a2a3a"};
+             color:${able ? "#fff" : "#555"};
+             box-shadow:${able ? `0 4px 24px ${m.accent}44` : "none"}"
+      onclick="humanize()">
+      ${m.icon} Humanize
+    </button>
+    ${outputText ? `<button class="btn-copy" style="color:${m.color === "#1a6b5a" ? "#2eb89a" : "#7c6ff7"};border:1px solid ${m.color === "#1a6b5a" ? "#2eb89a66" : "#7c6ff766"}" onclick="copyText()">${copied ? "✓ Copied!" : "Copy Text"}</button>` : ""}
+    ${inputText || outputText ? `<button class="btn-clear" onclick="clearAll()">Clear</button>` : ""}
+  `;
+}
+
+function onInput(val) { inputText = val; render(); }
+function humanize() { if (inputText.trim()) { outputText = humanizeText(inputText, currentMode); render(); } }
+function copyText() {
+  navigator.clipboard.writeText(outputText);
+  copied = true; render();
+  setTimeout(() => { copied = false; render(); }, 2000);
+}
+function clearAll() {
+  inputText = ""; outputText = "";
+  document.getElementById("textInput").value = "";
+  render();
+}
+
+render();
+</script>
+</body>
+</html>
